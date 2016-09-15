@@ -3,23 +3,19 @@ import time
 import re
 import bluetooth
 
-ELM_MAC_address = "00:0D:18:00:00:01"
 port = 1
-logging = True
-ELM_socket = None
-clientInfo = None
-
 class obd_serial:
 	def __init__(self):
 		self.logging = True
-		if not self.connect():
-			return None
+		self.ELM_socket = None
+		self.clientInfo = None
+		
 	
-	def connect(self):
+	def connect(self, MAC_address):
 		try:
 			self.ELM_socket = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
 			self.log('New socket created')
-			self.ELM_socket.connect((ELM_MAC_address, port))
+			self.ELM_socket.connect((MAC_address, port))
 			self.log('ELM socket created')
 		except:
 			self.error('Unable to connect to ELM327')
@@ -27,7 +23,10 @@ class obd_serial:
 			return False
 				
 			
-	def elm(self, cmd):
+	def elm(self, cmd, testing=False):
+		if testing:
+			time.sleep(0.3)
+			return('cmd = ' + cmd)
 		r = self.send_and_listen(cmd)	
 #		if r:
 #			print('<<< ' + r[-1])
