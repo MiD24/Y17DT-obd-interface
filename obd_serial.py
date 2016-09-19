@@ -8,7 +8,6 @@ class obd_serial:
 	def __init__(self):
 		self.logging = True
 		self.ELM_socket = None
-		self.clientInfo = None
 		
 	
 	def connect(self, MAC_address):
