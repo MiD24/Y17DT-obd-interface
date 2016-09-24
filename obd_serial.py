@@ -25,7 +25,7 @@ class obd_serial:
 	def elm(self, cmd, testing=False):
 		if testing:
 			time.sleep(0.3)
-			return('cmd = ' + cmd)
+			return("80 F1 11 46 61 01 00 00 00 00 00 00 00 00 30 00 42 00 00 A2 EF 00 A7 2F 00 00 EF 81 00 09 00 00 00 0  78 00 36 1A 28 1A 36 44 44 1A 78 90 32 AD AD 54 50 74 07 5D 7B 69 64 0D 32 19 40 00 3B 46 00 00 00 00 00 62 06 10 F5 65 A2")
 		r = self.send_and_listen(cmd)	
 #		if r:
 #			print('<<< ' + r[-1])

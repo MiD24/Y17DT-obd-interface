@@ -10,37 +10,33 @@ import time
 import obd_serial
 import parse
 
-class Gui:
+class Gui(pyglet.window.Window):
 	def __init__(self, testing, ELM_MAC_Address, filename, timestep=1):
+		super().__init__(resizable=True)
+		self.set_size(1000, 600)
 		self.dt = timestep
 		self.index = 0
 		self.testing = testing
 		self.ELM_MAC_Address = ELM_MAC_Address
 		self.filename = filename
 		
-		self.window = pyglet.window.Window()
-		self.label = pyglet.text.Label(str(0),
-                          font_name='Times New Roman',
-                          font_size=36,
-                          x=self.window.width//2, y=self.window.height//2,
-                          anchor_x='center', anchor_y='center')
+		self.speed_bar = bar(100, 100, 250, 50, 0, 150, 0, 'km/h', 'Speed', [30, 255, 0])
+		self.pedal_bar = bar(100, 250, 250, 50, 0, 100, 0, '%', 'Pedal', [30, 255, 0])
+		self.rpm_bar = bar(100, 400, 250, 50, 0, 5000, 0, 'rpm', 'Engine speed', [30, 255, 0])
+		pyglet.clock.schedule_interval(self.update, self.dt)
 		
-		@self.window.event
-		def on_draw():
-		    self.window.clear()
-		    self.label.draw()
-		def update(dt):
-			self.update(dt)
-		pyglet.clock.schedule_interval(update, self.dt)
-					
+	def on_draw(self):
+		self.clear()
+		self.speed_bar.draw()
+		self.pedal_bar.draw()
+		self.rpm_bar.draw()
+						
 	def update(self, dt):
 		#print("Time step: " + str(dt))
 		r = self.retreive()
-		self.label = pyglet.text.Label("Speed = " + str(parse.parse(r)['Speed']),
-                          font_name='Times New Roman',
-                          font_size=36,
-                          x=self.window.width//2, y=self.window.height//2,
-                          anchor_x='center', anchor_y='center')
+		self.speed_bar.update(dt, parse.parse(r)['Speed'])
+		self.pedal_bar.update(dt, parse.parse(r)['Pedal position'])
+		self.rpm_bar.update(dt, parse.parse(r)['RPM'])
 	
 	def run(self):
 		try:
@@ -90,6 +86,76 @@ class Gui:
 			self.obd.close()
 
 	
+class bar:
+	def __init__(self, x, y, width, height, low, high, value, unit, name, rgb):
+		self.label = pyglet.text.Label('1',
+	                          font_name='Times New Roman',
+	                          font_size=36,
+	                          x=100, y=100,
+	                          anchor_x='center', anchor_y='center')
+		self.x = x
+		self.y = y
+		self.bar_width = width
+		self.bar_height = height
+		self.low = low
+		self.high = high
+		self.value = value
+		self.name = name
+		self.unit = unit
+		self.color = []
+		for i in range(0,4): 
+			self.color.extend(rgb)
+		self.font = 'Times New Roman'
+		self.vertices_box = (self.x, self.y, self.x+self.bar_width, self.y,  self.x+self.bar_width, self.y+self.bar_height, self.x, self.y+self.bar_height)
+		self.vertices_bar = (self.x, self.y, self.x+int((self.value-self.low)/self.high*self.bar_width), self.y,  self.x+int((self.value-self.low)/self.high*self.bar_width), self.y+self.bar_height, self.x, self.y+self.bar_height)
+		self.box_vertex_list = pyglet.graphics.vertex_list_indexed(4,
+			[0, 1, 2, 3],
+			('v2i', self.vertices_box),
+			)
+		self.bar_vertex_list = pyglet.graphics.vertex_list_indexed(4,  [0, 1, 3, 1, 2, 3],
+			('v2i', self.vertices_bar),
+			('c3B', self.color)
+			)
+		self.label_val = pyglet.text.Label(str(self.value)+' '+self.unit,
+	                          font_name=self.font,
+	                          font_size=20,
+	                          x=self.vertices_box[2]+10, y=self.y+self.bar_height/2,
+	                          anchor_x='left', anchor_y='center')
+		self.label_name = pyglet.text.Label(self.name,
+	                          font_name=self.font,
+	                          font_size=20,
+	                          x=self.x, y=self.y+self.bar_height+5,
+	                          anchor_x='left', anchor_y='bottom')
+		self.label_low = pyglet.text.Label(str(self.low),
+	                          font_name=self.font,
+	                          font_size=10,
+	                          x=self.x, y=self.y-5,
+	                          anchor_x='left', anchor_y='top')
+		self.label_high = pyglet.text.Label(str(self.high),
+	                          font_name=self.font,
+	                          font_size=10,
+	                          x=self.x+self.bar_width, y=self.y-5,
+	                          anchor_x='right', anchor_y='top')
+		self.label_mid = pyglet.text.Label(str((self.high+self.low)//2),
+	                          font_name=self.font,
+	                          font_size=10,
+	                          x=self.x+self.bar_width//2, y=self.y-5,
+	                          anchor_x='center', anchor_y='top')
+	
+	def draw(self):
+		self.bar_vertex_list.draw(pyglet.gl.GL_TRIANGLES)
+		self.box_vertex_list.draw(pyglet.gl.GL_LINE_LOOP)	
+		self.label_val.draw()
+		self.label_name.draw()
+		self.label_low.draw()
+		self.label_high.draw()
+		self.label_mid.draw()
+		
+	def update(self, dt, value):
+		self.value = value
+		self.vertices_bar = (self.x, self.y, self.x+int((self.value-self.low)/self.high*self.bar_width), self.y,  self.x+int((self.value-self.low)/self.high*self.bar_width), self.y+self.bar_height, self.x, self.y+self.bar_height)
+		self.bar_vertex_list.vertices = self.vertices_bar
+		self.label_val.text = str(self.value)+' '+self.unit
 				
 if __name__ == "__main__":
 	T = 0.5
@@ -101,4 +167,5 @@ if __name__ == "__main__":
 	g.open_file()
 	if g.open_connection(): 
 		g.run()
+	g.terminate()
 	
