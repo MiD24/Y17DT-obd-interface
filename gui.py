@@ -13,16 +13,24 @@ import parse
 class Gui(pyglet.window.Window):
 	def __init__(self, testing, ELM_MAC_Address, filename, timestep=1):
 		super().__init__(resizable=True)
-		self.set_size(1000, 600)
+#		self.set_size(1000, 600)
+		self.maximize()
 		self.dt = timestep
 		self.index = 0
 		self.testing = testing
 		self.ELM_MAC_Address = ELM_MAC_Address
 		self.filename = filename
 		
-		self.speed_bar = bar(100, 100, 250, 50, 0, 150, 0, 'km/h', 'Speed', [30, 255, 0])
-		self.pedal_bar = bar(100, 250, 250, 50, 0, 100, 0, '%', 'Pedal', [30, 255, 0])
-		self.rpm_bar = bar(100, 400, 250, 50, 0, 5000, 0, 'rpm', 'Engine speed', [30, 255, 0])
+		grid_x = [100, 550, 1000, 1450]
+		grid_y = [100, 250, 400, 550, 700, 850, 1000]
+		
+		self.speed_bar = 		bar(grid_x[0], grid_y[0], 250, 50, 0, 150, 0, 'km/h', 'Speed', [30, 255, 0])
+		self.pedal_bar = 		bar(grid_x[0], grid_y[1], 250, 50, 0, 100, 0, '%', 'Pedal', [30, 255, 0])
+		self.rpm_bar = 		bar(grid_x[0], grid_y[2], 250, 50, 0, 5000, 0, 'rpm', 'Engine speed', [30, 255, 0])
+		self.boost_bar = 		bar(grid_x[0], grid_y[3], 250, 50, 100, 200, 100, 'kPa', 'Boost pressure', [30, 255, 0])
+		self.t_boost_bar = 	bar(grid_x[1], grid_y[3], 250, 50, 100, 200, 100, 'kPa', 'Target boost pressure', [30, 255, 0])
+		self.boost_ctl_bar = 	bar(grid_x[1], grid_y[2], 250, 50, 0, 100, 0, '%', 'Boost ctrl valve', [30, 255, 0])
+		self.inj_bar = 		bar(grid_x[1], grid_y[0], 250, 50, 0, 50, 0, 'mg/stroke', 'Injected quantity', [30, 255, 0])
 		pyglet.clock.schedule_interval(self.update, self.dt)
 		
 	def on_draw(self):
@@ -30,13 +38,25 @@ class Gui(pyglet.window.Window):
 		self.speed_bar.draw()
 		self.pedal_bar.draw()
 		self.rpm_bar.draw()
+		self.boost_bar.draw()
+		self.t_boost_bar.draw()
+		self.boost_ctl_bar.draw()
+		self.inj_bar.draw()
 						
 	def update(self, dt):
 		#print("Time step: " + str(dt))
 		r = self.retreive()
+		if 'NO DATA' in r or 'ERROR' in r:
+			self.terminate()
+			pyglet.app.exit()
+			return
 		self.speed_bar.update(dt, parse.parse(r)['Speed'])
 		self.pedal_bar.update(dt, parse.parse(r)['Pedal position'])
 		self.rpm_bar.update(dt, parse.parse(r)['RPM'])
+		self.boost_bar.update(dt, parse.parse(r)['Boost pressure'])
+		self.t_boost_bar.update(dt, parse.parse(r)['Target boost pressure'])
+		self.boost_ctl_bar.update(dt, parse.parse(r)['Boost control valve'])
+		self.inj_bar.update(dt, parse.parse(r)['Injection Q'])
 	
 	def run(self):
 		try:
@@ -76,7 +96,7 @@ class Gui(pyglet.window.Window):
 			self.resp = self.obd.elm('2101', self.testing)						#write '2101' to ELM327 and return response
 			self.output.write(self.resp + '\n')								#write response to file
 			diff = time.time() - t0
-			print("Time needed to retreive: " + str(diff))
+			#print("Time needed to retreive: " + str(diff))
 			return self.resp
 		return None
 			
@@ -107,7 +127,7 @@ class bar:
 			self.color.extend(rgb)
 		self.font = 'Times New Roman'
 		self.vertices_box = (self.x, self.y, self.x+self.bar_width, self.y,  self.x+self.bar_width, self.y+self.bar_height, self.x, self.y+self.bar_height)
-		self.vertices_bar = (self.x, self.y, self.x+int((self.value-self.low)/self.high*self.bar_width), self.y,  self.x+int((self.value-self.low)/self.high*self.bar_width), self.y+self.bar_height, self.x, self.y+self.bar_height)
+		self.vertices_bar = (self.x, self.y, self.x+int((self.value-self.low)/(self.high-self.low)*self.bar_width), self.y,  self.x+int((self.value-self.low)/self.high*self.bar_width), self.y+self.bar_height, self.x, self.y+self.bar_height)
 		self.box_vertex_list = pyglet.graphics.vertex_list_indexed(4,
 			[0, 1, 2, 3],
 			('v2i', self.vertices_box),
@@ -155,7 +175,10 @@ class bar:
 		self.value = value
 		self.vertices_bar = (self.x, self.y, self.x+int((self.value-self.low)/self.high*self.bar_width), self.y,  self.x+int((self.value-self.low)/self.high*self.bar_width), self.y+self.bar_height, self.x, self.y+self.bar_height)
 		self.bar_vertex_list.vertices = self.vertices_bar
-		self.label_val.text = str(self.value)+' '+self.unit
+		if isinstance(self.value, int):
+			self.label_val.text = str(value)+' '+self.unit
+		else:
+			self.label_val.text = "{0:.2f}".format(self.value)+' '+self.unit
 				
 if __name__ == "__main__":
 	T = 0.5
