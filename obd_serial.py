@@ -25,6 +25,7 @@ class obd_serial:
 	def elm(self, cmd, testing=False):
 		if testing:
 			time.sleep(0.3)
+			#return('NO DATA')
 			return("80 F1 11 46 61 01 00 00 00 00 00 00 00 00 30 00 42 00 00 A2 EF 00 A7 2F 00 00 EF 81 00 09 00 00 00 0  78 00 36 1A 28 1A 36 44 44 1A 78 90 32 AD AD 54 50 74 07 5D 7B 69 64 0D 32 19 40 00 3B 46 00 00 00 00 00 62 06 10 F5 65 A2")
 		r = self.send_and_listen(cmd)	
 #		if r:
@@ -45,7 +46,6 @@ class obd_serial:
 			cmd = cmd + '\r\n'
 		try:
 			self.log("Writing " + cmd)
-			self.log('Write ' + cmd)
 			self.ELM_socket.send(cmd)
 		except:
 			self.error('Unable to write to serial')
@@ -104,13 +104,13 @@ class obd_serial:
 		print('ERROR: ' + msg)
 	
 	def init_ELM(self):
-		self.send_and_listen('ATZ')
+		self.send_and_listen('ATZ') #reset
 		time.sleep(1)
-		self.send_and_listen('ATE0')
-		self.send_and_listen('ATAL')
-		self.send_and_listen('ATSP5')
-		self.send_and_listen('ATH1')
-		self.send_and_listen('ATSH8111F1')
+		self.send_and_listen('ATE0') #echo off
+		self.send_and_listen('ATAL') #allow long messages
+		self.send_and_listen('ATSP5') #Set protocol ISO 14230-4 (KWP FAST)
+		self.send_and_listen('ATH1') #headers on
+		self.send_and_listen('ATSH8111F1') #header 8111F1
 		self.log('Voltage = ' + self.send_and_listen('ATRV')[-1])
 	
 	def close(self):
